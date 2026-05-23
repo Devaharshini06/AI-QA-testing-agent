@@ -9,6 +9,15 @@ from app.tools.dom_inspector import (
 from app.services.fault_injection import (
     maybe_inject_failure
 )
+from app.services.observation_service import (
+    observe_page
+)
+from app.services.state_evaluator import (
+    evaluate_state
+)
+from app.services.retry_policy import (
+    decide_retry
+)
 
 def execute_actions(actions):
 
@@ -63,6 +72,48 @@ def execute_actions(actions):
                             action["selector"],
                             timeout=5000
                         )
+                        observation = observe_page(page)
+                        evaluation = evaluate_state(
+                            observation
+                        )
+                        decision = decide_retry(
+                            evaluation
+                        )
+                        if decision["retry"]:
+
+                            results.append(
+                                "Retrying action..."
+                            )
+
+                            page.wait_for_timeout(2000)
+
+                            page.click(
+                                action["selector"],
+                                timeout=5000
+                            )
+
+                            results.append(
+                                "Retry successful"
+                            )  
+                            retry_observation = observe_page(page)
+
+                            retry_evaluation = evaluate_state(
+                                retry_observation
+                            )
+                            
+                            results.append(
+                                f"Retry observation: {retry_observation}"
+                            )
+                            
+                            results.append(
+                                f"Retry evaluation: {retry_evaluation}"
+                            )
+
+                        results.append(
+                            f"Decision: {decision}"
+                        )
+                        results.append(f"Observation: {observation}")
+                        results.append(f"State Evaluation: {evaluation}")
 
                         results.append(
                             f"Clicked {action['selector']}"
@@ -105,6 +156,10 @@ def execute_actions(actions):
                             healed_selector,
                             timeout=5000
                         )
+                        observation = observe_page(page)
+                        evaluation = evaluate_state(observation)
+                        results.append(f"Post-healing observation: {observation}")
+                        results.append(f"Post-healing evaluation: {evaluation}")
                         
                         results.append(
                             "Recovery click success"
