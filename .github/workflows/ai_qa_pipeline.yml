@@ -1,0 +1,51 @@
+name: AI QA Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  autonomous-ai-testing:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Install Playwright Browsers
+        run: |
+          cd backend
+          playwright install
+
+      - name: Start FastAPI Backend
+        run: |
+          cd backend
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        shell: bash
+
+      - name: Wait for Backend Startup
+        run: sleep 10
+
+      - name: Run Autonomous AI QA Test
+        run: |
+          curl "http://127.0.0.1:8000/agent/execute?task=autonomously%20test%20login%20workflow"
+
+      - name: Upload Screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-qa-screenshots
+          path: backend/screenshots/
