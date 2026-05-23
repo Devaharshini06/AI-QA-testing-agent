@@ -18,6 +18,15 @@ from app.services.state_evaluator import (
 from app.services.retry_policy import (
     decide_retry
 )
+from app.services.replanning_service import (
+    generate_recovery_plan
+)
+from app.services.objective_engine import (
+    determine_next_goal
+)
+from app.services.goal_action_generator import (
+    generate_goal_actions
+)
 
 def execute_actions(actions):
 
@@ -76,6 +85,8 @@ def execute_actions(actions):
                         evaluation = evaluate_state(
                             observation
                         )
+                        next_goal = determine_next_goal(observation)
+
                         decision = decide_retry(
                             evaluation
                         )
@@ -100,11 +111,21 @@ def execute_actions(actions):
                             retry_evaluation = evaluate_state(
                                 retry_observation
                             )
-                            
+
+                            recovery_plan = generate_recovery_plan(
+                                task="Browser QA workflow",
+                                failed_step=action,
+                                evaluation=evaluation
+                            )
+
+                            results.append(
+                                f"Dynamic recovery plan: {recovery_plan}"
+                            )
+
                             results.append(
                                 f"Retry observation: {retry_observation}"
                             )
-                            
+
                             results.append(
                                 f"Retry evaluation: {retry_evaluation}"
                             )
@@ -113,6 +134,56 @@ def execute_actions(actions):
                             f"Decision: {decision}"
                         )
                         results.append(f"Observation: {observation}")
+                        results.append(f"Next Objective: {next_goal}")
+                        goal_actions = generate_goal_actions(
+                            next_goal
+                        )
+
+                        if goal_actions:
+                        
+                            results.append(
+                                f"Generated goal actions: {goal_actions}"
+                            )
+
+                            for goal_action in goal_actions:
+                            
+                                try:
+                                
+                                    if goal_action["type"] == "click":
+                                    
+                                        page.click(
+                                            goal_action["selector"]
+                                        )
+
+                                        results.append(
+                                            f"Goal click success: {goal_action['selector']}"
+                                        )
+
+                                    elif goal_action["type"] == "verify":
+                                    
+                                        visible = page.locator(
+                                            goal_action["selector"]
+                                        ).is_visible()
+
+                                        results.append(
+                                            f"Goal verification: {visible}"
+                                        )
+
+                                    elif goal_action["type"] == "screenshot":
+                                    
+                                        page.screenshot(
+                                            path=goal_action["path"]
+                                        )
+
+                                        results.append(
+                                            "Goal screenshot saved"
+                                        )
+
+                                except Exception as goal_error:
+                                
+                                    results.append(
+                                        f"Goal execution error: {goal_error}"
+                                    )
                         results.append(f"State Evaluation: {evaluation}")
 
                         results.append(
@@ -164,6 +235,63 @@ def execute_actions(actions):
                         results.append(
                             "Recovery click success"
                         )
+                        next_goal = determine_next_goal(
+                            observation
+                        )
+                        
+                        results.append(
+                            f"Next objective: {next_goal}"
+                        )
+                        
+                        goal_actions = generate_goal_actions(
+                            next_goal
+                        )
+                        
+                        if goal_actions:
+                        
+                            results.append(
+                                f"Generated goal actions: {goal_actions}"
+                            )
+                        
+                            for goal_action in goal_actions:
+                            
+                                try:
+                                
+                                    if goal_action["type"] == "click":
+                                    
+                                        page.click(
+                                            goal_action["selector"]
+                                        )
+                        
+                                        results.append(
+                                            f"Goal click success: {goal_action['selector']}"
+                                        )
+                        
+                                    elif goal_action["type"] == "verify":
+                                    
+                                        visible = page.locator(
+                                            goal_action["selector"]
+                                        ).is_visible()
+                        
+                                        results.append(
+                                            f"Goal verification: {visible}"
+                                        )
+                        
+                                    elif goal_action["type"] == "screenshot":
+                                    
+                                        page.screenshot(
+                                            path=goal_action["path"]
+                                        )
+                        
+                                        results.append(
+                                            "Goal screenshot saved"
+                                        )
+                        
+                                except Exception as goal_error:
+                                
+                                    results.append(
+                                        f"Goal execution error: {goal_error}"
+                                    )
                         
                         recovery_count += 1
                 # VERIFY ELEMENT
